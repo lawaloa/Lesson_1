@@ -1,0 +1,246 @@
+---
+title: "Great Tables 1 in Python: Structure, Format and Style"
+authors: 
+  - Michael Chow
+  - Richard Iannone
+editors: 
+  - Omotola Ayodele Lawal
+date: today
+toc: true
+number-sections: true
+highlight-style: kate
+format: 
+  html:
+    code-fold: true
+    code-tools: true
+    css: global/style/style.css
+  docx: default
+jupyter: python3
+---
+
+
+# Code Along: Coffee Table
+
+This workshop (and future video), with presenters Michael Chow and Rich Iannone, is all about using [Great Tables](https://posit-dev.github.io/great-tables/articles/intro.html){target="_blank"} to make beautiful tables for publication and display purposes. We believe that effective tables have these things in common:
+
+1. structuring that aids in the reading of the table
+2. well-formatted values, fitting expectations for the field of study
+3. styling that reduces time to insight and improves aesthetics
+
+## About The Instructors
+
+**Michael Chow, Senior Software Engineer, Posit**
+
+Michael is a data scientist and software engineer. He has programmed in Python for well over a decade, and he obtained a PhD in cognitive psychology from Princeton University. His interests include statistical methods, skill acquisition, and human memory.
+
+**Richard Iannone, Senior Software Engineer, Posit**
+
+Richard is a software engineer and table enthusiast. He's been vigorously working on making display tables easier to create/display in Python. And generally Rich enjoys creating open source packages so that people can great things in their own work.
+
+## Start
+
+Setting up.
+
+```{python}
+import polars as pl
+import json
+import polars.selectors as cs
+import typing_extensions
+from great_tables import GT, loc, style
+```
+
+Importing the data.
+
+```{python}
+# Load JSON file
+with open("coffee-sales.json", "r") as f:
+    raw_data = json.load(f)
+
+# Extract column names
+columns = [col["name"] for col in raw_data["columns"]]
+
+# Extract values and convert to rows
+values = list(zip(*[col["values"] for col in raw_data["columns"]]))
+
+# Convert to list of dictionaries while extracting only the list from 'monthly_sales'
+data = []
+for row in values:
+    row_dict = dict(zip(columns, row))
+    
+    # Extract only the list from the "monthly_sales" column
+    if "monthly_sales" in row_dict:
+        if isinstance(row_dict["monthly_sales"], dict) and "values" in row_dict["monthly_sales"]:
+            row_dict["monthly_sales"] = row_dict["monthly_sales"]["values"]  # Extract only the list
+    
+    data.append(row_dict)
+
+# Create Polars DataFrame
+coffee_sales = pl.DataFrame(data)
+
+coffee_sales
+```
+
+Let's get the data into Great Tables.
+
+```{python}
+gt_tbl_1 = GT(coffee_sales)
+
+gt_tbl_1
+```
+
+## Structure Basics
+
+Add a title to the table to explain contents.
+
+```{python}
+gt_tbl_2 = gt_tbl_1.tab_header(
+        title = "Coffee Equipment Sales for 2023"
+    )
+
+gt_tbl_2
+```
+
+Group numerical columns with a spanner. One grouping should be for revenue columns, another should be for profit columns.
+
+```{python}
+gt_tbl_3 = gt_tbl_2.tab_spanner(
+    label="Revenue", columns=cs.starts_with("revenue")
+).tab_spanner(  
+    label="Profit", columns=cs.starts_with("profit")
+)
+
+
+gt_tbl_3
+```
+
+Change Column labels for readability. The column names are:
+`icon`, `product`, `revenue_dollars`, `revenue_pct`, `profit_dollars`, `profit_pct`, and `monthly_sales`.
+
+```{python}
+gt_tbl_4 = (
+    gt_tbl_3
+    .cols_label(
+        revenue_dollars="Amount",
+        revenue_pct = "Percent",
+        profit_dollars="Amount",
+        profit_pct = "Percent",
+        monthly_sales = "Monthly Sales"
+    )
+)
+
+gt_tbl_4
+```
+
+## Formatting Basics
+
+Format the currency values to make them look better.
+
+```{python}
+gt_tbl_5 =  (
+    gt_tbl_4
+    .fmt_currency(columns=cs.ends_with("dollars"),
+                 use_subunits=False
+                 )
+)
+
+gt_tbl_5
+```
+
+Format the fractional values by turning them into percentages.
+
+```{python}
+gt_tbl_6 = (
+    gt_tbl_5
+    .fmt_percent(
+        columns =cs.ends_with("pct"),
+        decimals=0
+    )
+)
+
+gt_tbl_6
+```
+
+## Styling with tab_style()
+
+Add an 'aliceblue' background to columns pertaining to revenue.
+
+```{python}
+gt_tbl_7 = (
+    gt_tbl_6
+    .tab_style(
+        style= style.fill(color="aliceblue"),
+        locations=loc.body(columns=cs.starts_with("revenue"))
+    )
+)
+
+gt_tbl_7
+```
+
+Add an 'papayawhip' background to columns pertaining to profit.
+
+```{python}
+gt_tbl_8 = (
+    gt_tbl_7
+    .tab_style(
+        style= style.fill(color="papayawhip"),
+        locations=loc.body(columns=cs.starts_with("profit"))
+    )
+)
+
+gt_tbl_8
+```
+
+Make the text bold in the bottom row (the totals column).
+
+```{python}
+gt_tbl_9 = (
+    gt_tbl_8
+    .tab_style(
+        style=style.text(weight="bold"),
+        locations=loc.body(rows= pl.col("product") == "Total"
+    )
+)
+)
+
+gt_tbl_9
+```
+
+## Three Last Things
+
+Add a column of bar plots using the monthly revenue column.
+
+```{python}
+gt_tbl_10 = (
+    gt_tbl_9
+    .fmt_nanoplot(
+        columns="monthly_sales",
+        plot_type="bar"
+    )
+)
+
+gt_tbl_10
+```
+
+Add images to the `icon` column. The images are in the `img` directory.
+
+```{python}
+gt_tbl_11 = (
+    gt_tbl_10.fmt_image(
+    columns="icon",
+    path=r"C:\Users\Hon.Olayinka\Desktop\Data Science\Posit PBC\img"  
+)
+)
+
+gt_tbl_11
+```
+
+Turn the `None` cells into blank cells.
+
+```{python}
+gt_tbl_12 = (
+    gt_tbl_11
+    .sub_missing(missing_text="")
+)
+
+gt_tbl_12
+```
