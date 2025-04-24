@@ -296,7 +296,7 @@ Add images to the `icon` column. The images are in the `img` directory.
 gt_tbl_11 = (
     gt_tbl_10.fmt_image(
     columns="icon",
-    path=r"C:\Users\Hon.Olayinka\Desktop\Data Science\Posit PBC\img"  
+    path=r"C:\Users\Hon.Olayinka\Documents\GitHub\Posit_PBC\GREAT_TABLES_PYTHON\Lesson_1\img"  
 )
 )
 
